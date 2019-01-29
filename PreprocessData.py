@@ -20,6 +20,7 @@ subject_folder = sys.argv[1]
 subject_folder = glob.glob(subject_folder + '*')[0]
 #if subject_folder == []:
 #    sys.exit("Cannot find that subject")
+
 #subject_folder = 'Subject01_2019-1-16'
 
 path = './' + subject_folder + '/' + 'All_Device_Preprocess/'
@@ -58,7 +59,10 @@ for feature in empatica_filename:
 
 empatica_merged_df = empatica_merged_df[pd.notnull(empatica_merged_df['TS_Machine'])]
 empatica_merged_df['TS_Machine'] = empatica_merged_df['TS_Machine'].apply(lambda each_time : dt.datetime.fromtimestamp(each_time))
-empatica_merged_df.rename(columns={'TS_Machine':'Timestamp'}, inplace=True)
+empatica_merged_df.rename(columns={'TS_Machine':'Timestamp', 'bvp':'BVP_empatica', 
+                                   'ax':'AX_empatica', 'ay':'AY_empatica', 'az':'AZ_empatica', 
+                                   'ibi':'IBI_empatica', 'gsr':'GSR_empatica', 'hr':'HR_empatica', 'tag':'TAG_empatica', 
+                                   'tmp':'TEMP_empatica', 'batt':'BATT_empatica'}, inplace=True)
 empatica_merged_df.to_csv(path + subject_folder + '_empatica.csv')
 
 #Apply or Map 4fun
@@ -75,7 +79,8 @@ for fn in emfitqs_list_filename:
 if len(emfitqs_list_df) > 1:
     emfitqs_concat = pd.concat(emfitqs_list_df,ignore_index=True)
 
-emfitqs_concat = emfitqs_concat.rename(columns={'timestamp_from_machine':'Timestamp'})
+emfitqs_concat.columns = list(map(lambda each_col : each_col + '_emfitqs', emfitqs_concat.columns))
+emfitqs_concat = emfitqs_concat.rename(columns={'timestamp_from_machine_emfitqs':'Timestamp', })
 emfitqs_concat = emfitqs_concat.sort_values(by=('Timestamp'), ascending=True).reset_index(drop=True)
 emfitqs_concat['Timestamp'] = emfitqs_concat['Timestamp'].apply(lambda each_time : dt.datetime.fromtimestamp(each_time))
 emfitqs_concat.to_csv(path + subject_folder + '_emfitqs.csv')
@@ -93,7 +98,7 @@ if len(ticwatch_list_filename) != 0:
         ticwatch_concat = ticwatch_list_df[0]
     ticwatch_concat.pop('end')
     ticwatch_concat = ticwatch_concat.sort_values(by=['start'])
-    ticwatch_concat.rename(columns={'start':'Timestamp', 'value':'Hr'}, inplace=True)
+    ticwatch_concat.rename(columns={'start':'Timestamp', 'value':'HR_ticwatch'}, inplace=True)
     ticwatch_concat['Timestamp'] = ticwatch_concat['Timestamp']/1000
     ticwatch_concat['Timestamp'] = ticwatch_concat['Timestamp'].apply(lambda each_time : dt.datetime.fromtimestamp(each_time))
     ticwatch_concat.to_csv(path + subject_folder + '_ticwatch.csv')
@@ -126,19 +131,20 @@ else:
     polarh10_concat = polarh10_list_df[0]
 polarh10_concat.pop('Time')
 polarh10_concat = polarh10_concat.loc[:, ['Timestamp', 'HR (bpm)']]
+polarh10_concat.rename(columns={'HR (bpm)':'HR_polarh10'}, inplace=True)
 polarh10_concat = polarh10_concat.sort_values(by=('Timestamp'), ascending=True).reset_index(drop=True)
 polarh10_concat.to_csv(path + subject_folder + '_polarh10.csv')
 
 # Fitbit
 fitbit_df = pd.read_csv(glob.glob('./'  + subject_folder + '*/Fitbit/subject*.csv')[0])
-fitbit_df.rename(columns={'time':'Timestamp', 'value':'HR'}, inplace=True)
+fitbit_df.rename(columns={'time':'Timestamp', 'value':'HR_fitbit'}, inplace=True)
 fitbit_df.pop(fitbit_df.columns[0])
 fitbit_df['Timestamp'] = fitbit_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date + '_' + each_time, '%d-%m-%Y_%H:%M:%S'))
 fitbit_df.to_csv(path + subject_folder + '_fitbit.csv')
 
 # AppleWatch4
 applewatch_df = pd.read_csv(glob.glob('./' + subject_folder + '*/Apple*/subject*.csv')[0])
-applewatch_df.rename(columns={'time': 'Timestamp', 'hr':'Hr'}, inplace=True)
+applewatch_df.rename(columns={'time': 'Timestamp', 'hr':'HR_applewatch'}, inplace=True)
 applewatch_df.pop('date')
 applewatch_df.pop('timezone')
 applewatch_df['Timestamp'] = applewatch_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date + '_' + each_time, '%d-%m-%Y_%H:%M:%S'))
