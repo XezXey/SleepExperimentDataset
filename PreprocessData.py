@@ -17,6 +17,7 @@ import datetime as dt
 if len(sys.argv) == 1:
     sys.exit("No subject input")
 subject_folder = sys.argv[1]
+#subject_folder = "Subject06"
 subject_folder = glob.glob(subject_folder + '*')[0]
 #if subject_folder == []:
 #    sys.exit("Cannot find that subject")
@@ -63,6 +64,7 @@ empatica_merged_df.rename(columns={'TS_Machine':'Timestamp', 'bvp':'BVP_empatica
                                    'ax':'AX_empatica', 'ay':'AY_empatica', 'az':'AZ_empatica', 
                                    'ibi':'IBI_empatica', 'gsr':'GSR_empatica', 'hr':'HR_empatica', 'tag':'TAG_empatica', 
                                    'tmp':'TEMP_empatica', 'batt':'BATT_empatica'}, inplace=True)
+empatica_merged_df['HR_IBI_empatica'] = 60/empatica_merged_df['IBI_empatica']
 empatica_merged_df.to_csv(path + subject_folder + '_empatica.csv')
 
 #Apply or Map 4fun
