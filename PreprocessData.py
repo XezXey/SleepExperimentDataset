@@ -13,14 +13,15 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
+from biosppy.signals import bvp, ecg
 
-if len(sys.argv) == 1:
-    sys.exit("No subject input")
+#if len(sys.argv) == 1:
+#    sys.exit("No subject input")
 subject_folder = sys.argv[1]
-#subject_folder = "Subject06"
+#subject_folder = "Subject07"
 subject_folder = glob.glob(subject_folder + '*')[0]
-#if subject_folder == []:
-#    sys.exit("Cannot find that subject")
+if subject_folder == []:
+    sys.exit("Cannot find that subject")
 
 #subject_folder = 'Subject01_2019-1-16'
 
@@ -53,8 +54,9 @@ for fn in empatica_filename:
     plt.plot(empatica_dict_df[fn].index, empatica_dict_df[fn]['TS_Machine'])
     empatica_list_df = []
     
+# Merge empatica df with BVP_empatica for using the highest sampling rate    
 empatica_merged_df = empatica_dict_df['Bvp']
-empatica_merge_column = empatica_filename.remove('Bvp')
+empatica_merge_column = empatica_filename.remove('Bvp') # Remove this column name out to prevent the duplicate columns
 for feature in empatica_filename:
     empatica_merged_df = empatica_merged_df.merge(empatica_dict_df[feature], on='TS_Machine', how='outer').sort_values(by=['TS_Machine'], ascending=True).reset_index(drop = True)
 
@@ -65,7 +67,13 @@ empatica_merged_df.rename(columns={'TS_Machine':'Timestamp', 'bvp':'BVP_empatica
                                    'ibi':'IBI_empatica', 'gsr':'GSR_empatica', 'hr':'HR_empatica', 'tag':'TAG_empatica', 
                                    'tmp':'TEMP_empatica', 'batt':'BATT_empatica'}, inplace=True)
 empatica_merged_df['HR_IBI_empatica'] = 60/empatica_merged_df['IBI_empatica']
+empatica_merged_df['AX_empatica'] = empatica_merged_df['AX_empatica'] * 1/128
+empatica_merged_df['AY_empatica'] = empatica_merged_df['AY_empatica'] * 1/128
+empatica_merged_df['AZ_empatica'] = empatica_merged_df['AZ_empatica'] * 1/128
+
+#bvp.bvp(empatica_merged_df['BVP_empatica'].dropna(), sampling_rate=64, show=True)
 empatica_merged_df.to_csv(path + subject_folder + '_empatica.csv')
+
 
 #Apply or Map 4fun
 #empatica_merged_df.apply(pd.merge(x, on='TS_Machine', how='outer').sort_values(by=['TS_Machine'], ascending=True).reset_index(drop = True), empatica_list_df)
@@ -151,3 +159,4 @@ applewatch_df.pop('date')
 applewatch_df.pop('timezone')
 applewatch_df['Timestamp'] = applewatch_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date + '_' + each_time, '%d-%m-%Y_%H:%M:%S'))
 applewatch_df.to_csv(path + subject_folder + '_applewatch.csv')
+
