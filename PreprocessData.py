@@ -6,6 +6,9 @@ Preprocess the device data file
 @author: puntawat
 """
 # Import libraries
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import sys
 import os
 import glob
@@ -13,7 +16,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
-from biosppy.signals import bvp, ecg
 
 #if len(sys.argv) == 1:
 #    sys.exit("No subject input")

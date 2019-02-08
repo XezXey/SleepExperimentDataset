@@ -5,7 +5,8 @@ Created on Mon Jan 28 11:23:21 2019
 Preprocess the device data file
 @author: puntawat
 """
-from blaze import Data, compute, by
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import sys
 import glob
 import os
