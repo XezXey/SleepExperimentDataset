@@ -19,19 +19,21 @@ import matplotlib.pyplot as plt
 import datetime as dt
 from biosppy.signals import bvp, ecg
 import json
-import time
 import timeit
 
 runtime_start = timeit.default_timer()
 
 
-
+"""
 subject_folder = sys.argv[1]
 subject_name = subject_folder
 if len(sys.argv) == 1:
     sys.exit("No subject input")
+"""
+    
 
-#subject_folder = 'Subject09'
+subject_folder = 'Subject07'
+subject_name = subject_folder
 #sj_names = ['Subject01', 'Subject02', 'Subject03', 'Subject04', 'Subject05', 'Subject06', 'Subject07', 'Subject08', 'Subject09', 'Subject10']
 #for each_sj in sj_names:
 #subject_folder = each_sj
@@ -99,18 +101,19 @@ for fn in biosignalsplux_list_filename:
             biosignalsplux_list_hr_df.append(biosignalsplux_hr)
         except ValueError:
             print('No ECG Signal found! : Not enough beats to compute heart rate.')
-        
+
 
 # Concaternating, Sorting and Writing to csv
 biosignalsplux_hr_concat = pd.concat(biosignalsplux_list_hr_df, ignore_index=True)
 biosignalsplux_hr_concat = biosignalsplux_hr_concat.sort_values(by=('Timestamp'), ascending=True).reset_index(drop=True)
-biosignalsplux_hr_concat.to_csv(path + subject_folder + '_biosignalsplux_hr.csv')
+#biosignalsplux_hr_concat.to_csv(path + subject_folder + '_biosignalsplux_hr.csv')
 
 
 biosignalsplux_df_concat = pd.concat(biosignalsplux_list_df, ignore_index=True)
 biosignalsplux_df_concat = biosignalsplux_df_concat.sort_values(by=('Timestamp'), ascending=True).reset_index(drop=True)
+biosignalsplux_df_concat['Timestamp'].loc[biosignalsplux_df_concat['CH1_Hand'] > 30000]
 
-biosignalsplux_df_concat.to_csv(path + subject_folder + '_biosignalsplux_raw.csv')
+#biosignalsplux_df_concat.to_csv(path + subject_folder + '_biosignalsplux_raw.csv')
 
 runtime_stop = timeit.default_timer()
-print("Finishing...Preprocessing Biosignalsplux file : " + subject_name + ' (Runtime : ' + str(runtime_stop - runtime_start) + ' s)') 
+print("Finishing...Preprocessing Biosignalsplux file : " + subject_name + ' (Runtime : ' + str(runtime_stop - runtime_start) + ' s)')

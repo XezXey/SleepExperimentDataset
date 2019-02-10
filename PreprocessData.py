@@ -16,10 +16,15 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
+import timeit
+
+runtime_start = timeit.default_timer()
 
 #if len(sys.argv) == 1:
 #    sys.exit("No subject input")
 subject_folder = sys.argv[1]
+subject_name = subject_folder
+
 #subject_folder = "Subject07"
 subject_folder = glob.glob(subject_folder + '*')[0]
 if subject_folder == []:
@@ -162,3 +167,5 @@ applewatch_df.pop('timezone')
 applewatch_df['Timestamp'] = applewatch_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date + '_' + each_time, '%d-%m-%Y_%H:%M:%S'))
 applewatch_df.to_csv(path + subject_folder + '_applewatch.csv')
 
+runtime_stop = timeit.default_timer()
+print("Finishing...Preprocessing Biosignalsplux file : " + subject_name + ' (Runtime : ' + str(runtime_stop - runtime_start) + ' s)') 
