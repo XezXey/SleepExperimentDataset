@@ -17,6 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
 import timeit
+import errno
+from freedson_adult_1998 import generate_60s_epoch, freedson_adult_1998
+import statistics
+#from libopenimu.algorithms.freedson_adult_1998 import generate_60s_epoch
 
 runtime_start = timeit.default_timer()
 
@@ -25,12 +29,12 @@ runtime_start = timeit.default_timer()
 subject_folder = sys.argv[1]
 subject_name = subject_folder
 
-#subject_folder = "Subject07"
+#subject_folder = "Subject03"
+#subject_name = subject_folder
 subject_folder = glob.glob(subject_folder + '*')[0]
 if subject_folder == []:
     sys.exit("Cannot find that subject")
 
-#subject_folder = 'Subject01_2019-1-16'
 
 path = './' + subject_folder + '/' + 'All_Device_Preprocess/'
 # Trying to make directory if it's not exist
@@ -78,13 +82,41 @@ empatica_merged_df['AX_empatica'] = empatica_merged_df['AX_empatica'] * 1/128
 empatica_merged_df['AY_empatica'] = empatica_merged_df['AY_empatica'] * 1/128
 empatica_merged_df['AZ_empatica'] = empatica_merged_df['AZ_empatica'] * 1/128
 
+
+# Calculating the Physical Activity level
+empatica_merged_df['AX_empatica'].fillna(method='ffill', inplace=True)
+empatica_merged_df['AY_empatica'].fillna(method='ffill', inplace=True)
+empatica_merged_df['AZ_empatica'].fillna(method='ffill', inplace=True)
+sampling_rate = 32
+ax_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['AX_empatica'].values}, sampling_rate))
+ay_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['AY_empatica'].values}, sampling_rate))
+az_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['AZ_empatica'].values}, sampling_rate))
+
+empatica_merged_df['PA_lvl_AX_empatica'] = ax_pa_lvl['PA_Level']
+empatica_merged_df['PA_lvl_AY_empatica'] = ay_pa_lvl['PA_Level']
+empatica_merged_df['PA_lvl_AZ_empatica'] = az_pa_lvl['PA_Level']
+
+empatica_merged_df['PA_lvl_AX_empatica_encoded'] = ax_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
+empatica_merged_df['PA_lvl_AY_empatica_encoded'] = ay_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
+empatica_merged_df['PA_lvl_AZ_empatica_encoded'] = az_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
+
+
+"""
+# This method not work cuz some record have no majority ===> Doing from scratch is work(Using median)
+empatica_merged_df['PA_lvl_empatica'] = empatica_merged_df[['PA_lvl_AX_empatica', 'PA_lvl_AY_empatica', 'PA_lvl_AZ_empatica']].mode(axis=1)[0]
+empatica_merged_df['PA_lvl_empatica_encoded'] = empatica_merged_df['PA_lvl_empatica'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
+"""
+
+# Iterate over each records and find median to be the PA LVL
+for index, each_record in empatica_merged_df[['PA_lvl_AX_empatica_encoded', 'PA_lvl_AY_empatica_encoded', 'PA_lvl_AZ_empatica_encoded']].iterrows():
+    empatica_merged_df.loc[index, 'PA_lvl_empatica_encoded'] = each_record.median()
+
+empatica_merged_df['PA_lvl_empatica'] = empatica_merged_df['PA_lvl_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
+
 #bvp.bvp(empatica_merged_df['BVP_empatica'].dropna(), sampling_rate=64, show=True)
 empatica_merged_df.to_csv(path + subject_folder + '_empatica.csv')
 
 
-#Apply or Map 4fun
-#empatica_merged_df.apply(pd.merge(x, on='TS_Machine', how='outer').sort_values(by=['TS_Machine'], ascending=True).reset_index(drop = True), empatica_list_df)
-#y = y.merge(empatica_dict_df['Tmp'], on='TS_Machine', how='outer').sort_values(by=['TS_Machine'], ascending=True).reset_index(drop = True)
 
 
 # EmfitQS
@@ -153,11 +185,29 @@ polarh10_concat = polarh10_concat.sort_values(by=('Timestamp'), ascending=True).
 polarh10_concat.to_csv(path + subject_folder + '_polarh10.csv')
 
 # Fitbit
-fitbit_df = pd.read_csv(glob.glob('./'  + subject_folder + '*/Fitbit/subject*.csv')[0])
-fitbit_df.rename(columns={'time':'Timestamp', 'value':'HR_fitbit'}, inplace=True)
-fitbit_df.pop(fitbit_df.columns[0])
-fitbit_df['Timestamp'] = fitbit_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date + '_' + each_time, '%d-%m-%Y_%H:%M:%S'))
+n_fitbit_file = len(glob.glob('./'  + subject_folder + '*/Fitbit/subject*.csv'))
+date_resting_sleeping = str(emfitqs_concat['Timestamp'][0].date())
+if n_fitbit_file == 1:
+    # All part in one day : Resting + Sleeping + Activity
+    fitbit_df = pd.read_csv(glob.glob('./'  + subject_folder + '*/Fitbit/subject*.csv')[0])
+    fitbit_df.rename(columns={'time':'Timestamp', 'value':'HR_fitbit'}, inplace=True)
+    fitbit_df.pop(fitbit_df.columns[0])
+    fitbit_df['Timestamp'] = fitbit_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date_resting_sleeping + '_' + each_time, '%Y-%m-%d_%H:%M:%S'))
+elif n_fitbit_file == 2:
+    # Activity part
+    fitbit_df_resting_sleeping = pd.read_csv(glob.glob('./'  + subject_folder + '*/Fitbit/subject*.csv')[0])
+    fitbit_df_resting_sleeping.rename(columns={'time':'Timestamp', 'value':'HR_fitbit'}, inplace=True)
+    fitbit_df_resting_sleeping.pop(fitbit_df_resting_sleeping.columns[0])
+    fitbit_df_resting_sleeping['Timestamp'] = fitbit_df_resting_sleeping['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date_resting_sleeping + '_' + each_time, '%Y-%m-%d_%H:%M:%S'))
+
+    fitbit_df_activity = pd.read_csv(glob.glob('./'  + subject_folder + '*/Fitbit/subject*.csv')[1])
+    fitbit_df_activity.rename(columns={'time':'Timestamp', 'value':'HR_fitbit'}, inplace=True)
+    fitbit_df_activity.pop(fitbit_df_activity.columns[0])
+    fitbit_df_activity['Timestamp'] = fitbit_df_activity['Timestamp'].apply(lambda each_time : dt.datetime.strptime(date + '_' + each_time, '%d-%m-%Y_%H:%M:%S'))
+
+    fitbit_df = pd.concat([fitbit_df_resting_sleeping, fitbit_df_activity])
 fitbit_df.to_csv(path + subject_folder + '_fitbit.csv')
+    
 
 # AppleWatch4
 applewatch_df = pd.read_csv(glob.glob('./' + subject_folder + '*/Apple*/subject*.csv')[0])
@@ -168,4 +218,4 @@ applewatch_df['Timestamp'] = applewatch_df['Timestamp'].apply(lambda each_time :
 applewatch_df.to_csv(path + subject_folder + '_applewatch.csv')
 
 runtime_stop = timeit.default_timer()
-print("Finishing...Preprocessing Biosignalsplux file : " + subject_name + ' (Runtime : ' + str(runtime_stop - runtime_start) + ' s)') 
+print("Finishing...Preprocessing all devices file : " + subject_name + ' (Runtime : ' + str(runtime_stop - runtime_start) + ' s)') 
