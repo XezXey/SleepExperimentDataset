@@ -14,6 +14,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime as dt
+import seaborn as sns; sns.set(color_codes=True)
+
 
 #subject_folder = sys.argv[1]
 subject_folder = "Subject07"
@@ -230,7 +232,6 @@ axes_activity.set_ylabel("HR_empatica(bpm)")
 axes_activity.set_xticks(np.arange(int(devices_df_interval_activity['HR_polarh10'].min())-10, int(devices_df_interval_activity['HR_polarh10'].max()), 20))
 axes_activity.set_yticks(np.arange(40, 160, 20))
 
-
 axes_activity = plt.subplot(3, 2, 5)
 axes_activity.scatter(devices_df_interval_activity['HR_polarh10'], devices_df_interval_activity['HR_applewatch'], s = 5.5)
 axes_activity.scatter(devices_df_interval_activity['HR_polarh10'], devices_df_interval_activity['HR_ticwatch'], s = 5.5)
@@ -244,4 +245,3 @@ axes_activity.set_yticks(np.arange(40, 160, 20))
 
 plt.show()
 plt.legend()
-

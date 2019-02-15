@@ -16,7 +16,7 @@ import numpy as np
 import datetime as dt
 
 subject_folder = sys.argv[1]
-#subject_folder = "Subject06"
+#subject_folder = "Subject10"
 
 if len(sys.argv) == 1:
     sys.exit("No subject input")
@@ -26,6 +26,15 @@ path = './' + subject_folder + '*/All_Device_Preprocess/*.csv'
 
 
 devices_filename = glob.glob(path)
+
+# Removing raw filename for ignore in from visualising
+raw_filename = glob.glob('./' + subject_folder + '*/All_Device_Preprocess/*_raw.csv')
+try:
+    devices_filename.remove(raw_filename[0])
+except IndexError or ValueError:
+    print('Everything is fine. Nothing to be remove')
+    
+    
 #print(devices_filename)
 """
 if len(devices_filename) == 6:
@@ -84,7 +93,7 @@ devices_df_interval = devices_df.loc[(devices_df['Timestamp'] > start_time_obj) 
 # Slicing into the resting and sleeping state
 start_time_resting = devices_df['HR_biosignalsplux'].dropna().index[0]
 end_time_resting = start_time_resting + dt.timedelta(minutes=30)
-start_time_sleeping = end_time_resting
+start_time_sleeping = end_time_resting + dt.timedelta(minutes=5)
 end_time_sleeping = devices_df['HR_biosignalsplux'].dropna().index[-1]
 start_time_activity = devices_df['HR_polarh10'].dropna().index[0]
 end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
@@ -93,6 +102,28 @@ end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
 devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting.time()) & (devices_df['Timestamp'] < end_time_resting.time())]
 devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping.time()) & (devices_df['Timestamp'] < end_time_sleeping.time())]
 devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity.time()) & (devices_df['Timestamp'] < end_time_activity.time())]
+
+"""
+# Writing to csv file for only grouped 
+
+subject_folder = glob.glob(subject_folder + '*')[0]
+#if subject_folder == []:
+#    sys.exit("Cannot find that subject")
+
+#subject_folder = 'Subject01_2019-1-16'
+
+path_grouped = './' + subject_folder + '/All_Device_Grouped/'
+# Trying to make directory if it's not exist
+if not os.path.exists(os.path.dirname(path_grouped)):
+    try:
+        os.makedirs(os.path.dirname(path_grouped))
+    except OSError as exc: #Guard against race condition
+        if exc.errno != errno.EEXIST:
+            raise
+devices_df_interval_resting.to_csv(path_grouped + subject_folder + '_grouped_resting.csv')
+devices_df_interval_sleeping.to_csv(path_grouped + subject_folder + '_grouped_sleeping.csv')
+devices_df_interval_activity.to_csv(path_grouped + subject_folder + '_grouped_activity.csv')
+"""
 
 # 1. Line plot : HR and ACC
 #lineObjects = plt.plot(devices_df_interval['Timestamp'], devices_df_interval[devices_df_interval.iloc[:, :-1].columns], marker='x', markersize=0.8, linestyle='-')

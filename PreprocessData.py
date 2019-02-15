@@ -19,21 +19,19 @@ import datetime as dt
 import timeit
 import errno
 from freedson_adult_1998 import generate_60s_epoch, freedson_adult_1998
-import statistics
-#from libopenimu.algorithms.freedson_adult_1998 import generate_60s_epoch
 
 runtime_start = timeit.default_timer()
 
 #if len(sys.argv) == 1:
 #    sys.exit("No subject input")
-subject_folder = sys.argv[1]
-subject_name = subject_folder
-
-#subject_folder = "Subject03"
+#subject_folder = sys.argv[1]
 #subject_name = subject_folder
+
+subject_folder = "Subject09"
+subject_name = subject_folder
 subject_folder = glob.glob(subject_folder + '*')[0]
-if subject_folder == []:
-    sys.exit("Cannot find that subject")
+#if subject_folder == []:
+#    sys.exit("Cannot find that subject")
 
 
 path = './' + subject_folder + '/' + 'All_Device_Preprocess/'
@@ -81,25 +79,39 @@ empatica_merged_df['HR_IBI_empatica'] = 60/empatica_merged_df['IBI_empatica']
 empatica_merged_df['AX_empatica'] = empatica_merged_df['AX_empatica'] * 1/128
 empatica_merged_df['AY_empatica'] = empatica_merged_df['AY_empatica'] * 1/128
 empatica_merged_df['AZ_empatica'] = empatica_merged_df['AZ_empatica'] * 1/128
+empatica_merged_df['VectorA_empatica'] = np.sqrt(np.square(empatica_merged_df['AX_empatica'].astype(np.float64)) + np.square(empatica_merged_df['AY_empatica'].astype(np.float64)) + np.square(empatica_merged_df['AZ_empatica'].astype(np.float64)))
 
 
 # Calculating the Physical Activity level
 empatica_merged_df['AX_empatica'].fillna(method='ffill', inplace=True)
 empatica_merged_df['AY_empatica'].fillna(method='ffill', inplace=True)
 empatica_merged_df['AZ_empatica'].fillna(method='ffill', inplace=True)
+empatica_merged_df['VectorA_empatica'].fillna(method='ffill', inplace=True)
 sampling_rate = 32
 ax_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['AX_empatica'].values}, sampling_rate))
 ay_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['AY_empatica'].values}, sampling_rate))
 az_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['AZ_empatica'].values}, sampling_rate))
+vectora_pa_lvl = pd.DataFrame(freedson_adult_1998({'time' : empatica_merged_df.index.values, 'values':empatica_merged_df['VectorA_empatica'].values}, sampling_rate))
 
 empatica_merged_df['PA_lvl_AX_empatica'] = ax_pa_lvl['PA_Level']
 empatica_merged_df['PA_lvl_AY_empatica'] = ay_pa_lvl['PA_Level']
 empatica_merged_df['PA_lvl_AZ_empatica'] = az_pa_lvl['PA_Level']
+empatica_merged_df['PA_lvl_VectorA_empatica'] = vectora_pa_lvl['PA_Level']
 
 empatica_merged_df['PA_lvl_AX_empatica_encoded'] = ax_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
 empatica_merged_df['PA_lvl_AY_empatica_encoded'] = ay_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
 empatica_merged_df['PA_lvl_AZ_empatica_encoded'] = az_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
+empatica_merged_df['PA_lvl_VectorA_empatica_encoded'] = vectora_pa_lvl['PA_Level'].map({'Sedentary':1, 'Light':2, 'Moderate':3, 'Vigorous':4, 'Very Vigorous':5})
 
+"""
+# Just for testing how much multi state that PA_LVL possibly have
+dx = list(map(set, empatica_merged_df[['PA_lvl_AX_empatica', 'PA_lvl_AY_empatica', 'PA_lvl_AZ_empatica']].values))
+counsast = 0
+for idx, i in enumerate(dx):
+    if len(i) == 3 :
+        print(idx)
+        counsast+=1
+"""     
 
 """
 # This method not work cuz some record have no majority ===> Doing from scratch is work(Using median)
@@ -109,9 +121,9 @@ empatica_merged_df['PA_lvl_empatica_encoded'] = empatica_merged_df['PA_lvl_empat
 
 # Iterate over each records and find median to be the PA LVL
 for index, each_record in empatica_merged_df[['PA_lvl_AX_empatica_encoded', 'PA_lvl_AY_empatica_encoded', 'PA_lvl_AZ_empatica_encoded']].iterrows():
-    empatica_merged_df.loc[index, 'PA_lvl_empatica_encoded'] = each_record.median()
+    empatica_merged_df.loc[index, 'PA_lvl_3axis_empatica_encoded'] = each_record.median()
 
-empatica_merged_df['PA_lvl_empatica'] = empatica_merged_df['PA_lvl_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
+empatica_merged_df['PA_lvl_empatica'] = empatica_merged_df['PA_lvl_3axis_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
 
 #bvp.bvp(empatica_merged_df['BVP_empatica'].dropna(), sampling_rate=64, show=True)
 empatica_merged_df.to_csv(path + subject_folder + '_empatica.csv')
