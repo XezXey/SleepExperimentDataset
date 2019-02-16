@@ -24,11 +24,11 @@ runtime_start = timeit.default_timer()
 
 #if len(sys.argv) == 1:
 #    sys.exit("No subject input")
-#subject_folder = sys.argv[1]
-#subject_name = subject_folder
-
-subject_folder = "Subject09"
+subject_folder = sys.argv[1]
 subject_name = subject_folder
+
+#subject_folder = "Subject09"
+#subject_name = subject_folder
 subject_folder = glob.glob(subject_folder + '*')[0]
 #if subject_folder == []:
 #    sys.exit("Cannot find that subject")
@@ -123,7 +123,7 @@ empatica_merged_df['PA_lvl_empatica_encoded'] = empatica_merged_df['PA_lvl_empat
 for index, each_record in empatica_merged_df[['PA_lvl_AX_empatica_encoded', 'PA_lvl_AY_empatica_encoded', 'PA_lvl_AZ_empatica_encoded']].iterrows():
     empatica_merged_df.loc[index, 'PA_lvl_3axis_empatica_encoded'] = each_record.median()
 
-empatica_merged_df['PA_lvl_empatica'] = empatica_merged_df['PA_lvl_3axis_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
+empatica_merged_df['PA_lvl_3axis_empatica'] = empatica_merged_df['PA_lvl_3axis_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
 
 #bvp.bvp(empatica_merged_df['BVP_empatica'].dropna(), sampling_rate=64, show=True)
 empatica_merged_df.to_csv(path + subject_folder + '_empatica.csv')
