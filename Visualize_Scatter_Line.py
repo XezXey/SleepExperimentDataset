@@ -15,9 +15,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import datetime as dt
 import errno
+import seaborn as sns; sns.set(color_codes=True)
+
 
 subject_folder = sys.argv[1]
-#subject_folder = "Subject10"
+#subject_folder = "Subject06"
 
 #if len(sys.argv) == 1:
 #    sys.exit("No subject input")
@@ -30,8 +32,11 @@ devices_filename = glob.glob(path)
 
 # Removing raw filename for ignore in from visualising
 raw_filename = glob.glob('./' + subject_folder + '*/All_Device_Preprocess/*_raw.csv')
+biosppy_filename = glob.glob('./' + subject_folder + '*/All_Device_Preprocess/*_biosppy.csv')
 try:
     devices_filename.remove(raw_filename[0])
+    devices_filename.remove(biosppy_filename[0])
+    devices_filename.remove(biosppy_filename[1])
 except IndexError or ValueError:
     print('Everything is fine. Nothing to be remove')
     
@@ -65,8 +70,12 @@ devices_list_df = []
 for index, filename in enumerate(devices_filename):
     #print(index)
     #print(filename)
-    devices_list_df.append(pd.read_csv(filename, index_col=0))
-    devices_dict_df[find_filename(filename)] = pd.read_csv(filename, index_col=0)
+    if find_filename(filename) == 'biosignalsplux':
+        devices_list_df.append(pd.read_csv(filename, index_col=None))
+        devices_dict_df[find_filename(filename)] = pd.read_csv(filename, index_col=None)
+    else:
+        devices_list_df.append(pd.read_csv(filename, index_col=0))
+        devices_dict_df[find_filename(filename)] = pd.read_csv(filename, index_col=0)
 """
 for each_device in devices_dict_df.keys():￼
     print(devices_dict_df[each_device].head(3))
@@ -80,7 +89,8 @@ devices_df = devices_df.sort_values(by=['Timestamp'], ascending=True).reset_inde
 cols = devices_df.columns.tolist()
 cols = cols[-1:] + cols[:-1]
 devices_df = devices_df[cols]
-devices_df = devices_df.loc[:, ['HR_applewatch', 'HR_polarh10', 'HR_empatica', 'HR_IBI_empatica', 'HR_fitbit', 'HR_emfitqs', 'HR_ticwatch', 'AX_empatica', 'AY_empatica', 'AZ_empatica', 'HR_biosignalsplux']].groupby(devices_df['Timestamp']).mean()
+interest_cols = ['HR_applewatch', 'HR_polarh10', 'HR_empatica', 'HR_IBI_empatica', 'HR_fitbit', 'HR_emfitqs', 'HR_ticwatch', 'AX_empatica', 'AY_empatica', 'AZ_empatica', 'PA_lvl_VectorA_empatica_encoded', 'VectorA_empatica', 'HR_biosignalsplux']
+devices_df = devices_df.loc[:, interest_cols].groupby(devices_df['Timestamp']).mean()
 devices_df['Timestamp'] = devices_df.index.time
 
 # Plotting
@@ -92,10 +102,10 @@ end_time_obj = dt.datetime.strptime(end_time, "%H:%M:%S").replace(microsecond=0)
 devices_df_interval = devices_df.loc[(devices_df['Timestamp'] > start_time_obj) & (devices_df['Timestamp'] < end_time_obj)]
 
 # Slicing into the resting and sleeping state
-start_time_resting = devices_df['HR_biosignalsplux'].dropna().index[0]
+start_time_resting = devices_df['AX_empatica'].dropna().index[0]
 end_time_resting = start_time_resting + dt.timedelta(minutes=30)
 start_time_sleeping = end_time_resting + dt.timedelta(minutes=5)
-end_time_sleeping = devices_df['HR_biosignalsplux'].dropna().index[-1]
+end_time_sleeping = devices_df['AX_empatica'].dropna().index[-1]
 start_time_activity = devices_df['HR_polarh10'].dropna().index[0]
 end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
 
@@ -296,18 +306,217 @@ for state_name, state_value_list in state_devices.items():
 
 #plt.show()
 
-"""
-plt.scatter(devices_df_interval_resting['AX_empatica'], devices_df_interval_resting['HR_biosignalsplux'], s=1.5)
-plt.scatter(devices_df_interval_resting['AY_empatica'], devices_df_interval_resting['HR_biosignalsplux'], s=1.5)
-plt.scatter(devices_df_interval_resting['AZ_empatica'], devices_df_interval_resting['HR_biosignalsplux'], s=1.5)
-plt.legend()
+
+# 4. Plotting HR graph and error with freedson
+path_img = './Visualization_Image/ErrorWithFreedson/' + subject_folder + '/'
+# Trying to make directory if it's not exist
+if not os.path.exists(os.path.dirname(path_img)):
+    try:
+        os.makedirs(os.path.dirname(path_img))
+    except OSError as exc: #Guard against race condition
+        if exc.errno != errno.EEXIST:
+            raise
+devices_df_interval_all_states_freedson = pd.concat([devices_df_interval_resting, devices_df_interval_sleeping, devices_df_interval_activity])
+devices_df_interval_resting_freedson = devices_df_interval_resting
+devices_df_interval_sleeping_freedson = devices_df_interval_sleeping
+devices_df_interval_activity_freedson = devices_df_interval_activity
 
 
-plt.scatter(devices_df_interval_sleeping['AX_empatica'], devices_df_interval_sleeping['HR_biosignalsplux'], s=1.5)
-plt.scatter(devices_df_interval_sleeping['AY_empatica'], devices_df_interval_sleeping['HR_biosignalsplux'], s=1.5)
-plt.scatter(devices_df_interval_sleeping['AZ_empatica'], devices_df_interval_sleeping['HR_biosignalsplux'], s=1.5)
+#plt.plot((devices_df_interval_all_states_freedson['HR_biosignalsplux']-devices_df_interval_all_states_freedson['HR_fitbit']).dropna(), 'x-', markersize=1.5)
+# 1.Empatica
 
-plt.scatter(devices_df_interval_activity['AX_empatica'], devices_df_interval_activity['HR_polarh10'], s=1.5)
-plt.scatter(devices_df_interval_activity['AY_empatica'], devices_df_interval_activity['HR_polarh10'], s=1.5)
-plt.scatter(devices_df_interval_activity['AZ_empatica'], devices_df_interval_activity['HR_polarh10'], s=1.5)
-"""
+# Resting states
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - Empatica Error with Freedson(PA level) in Resting states', fontsize=40)
+axes_resting_freedsod_empatica = plt.subplot(3, 1, 1)
+empatica_resting_reg_plot = (devices_df_interval_resting_freedson['HR_biosignalsplux']-devices_df_interval_resting_freedson['HR_empatica']).where(devices_df_interval_resting_freedson['HR_biosignalsplux']-devices_df_interval_resting_freedson['HR_empatica'] < 50, np.nan)
+try:
+    sns.regplot(y = empatica_resting_reg_plot, x=list(range(0, len(empatica_resting_reg_plot.index))), ax=axes_resting_freedsod_empatica)
+    axes_resting_freedsod_empatica.axhline(0, ls='--', color='red')
+    axes_resting_freedsod_empatica.set(ylabel='Empatica - Error Heart rate(bmp)', xlabel='Records')
+    axes_resting_freedsod_empatica = plt.subplot(3, 1, 2)
+    axes_resting_freedsod_empatica.plot(devices_df_interval_resting_freedson.index.time, devices_df_interval_resting_freedson['PA_lvl_VectorA_empatica_encoded'])
+    axes_resting_freedsod_empatica.set(ylabel='Physical Activity Level', xlabel='Time')
+    axes_resting_freedsod_empatica = plt.subplot(3, 1, 3)
+    axes_resting_freedsod_empatica.set(ylabel='Accelerometer', xlabel='Time')
+    axes_resting_freedsod_empatica.plot(devices_df_interval_resting_freedson.index.time, (devices_df_interval_resting_freedson['VectorA_empatica']))
+except ValueError:
+    print('No data matching found on' + subject_folder + ' - Empatica Error with Freedson(PA level) in Resting states')
+
+fig.savefig(path_img + subject_folder + '_empatica_resting_states')
+
+# Sleeping States
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - Empatica Error with Freedson(PA level) in Sleeping states', fontsize=40)
+axes_sleeping_freedsod_empatica = plt.subplot(3, 1, 1)
+empatica_sleeping_reg_plot = (devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_empatica']).where(devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_empatica'] < 50, np.nan)
+axes_sleeping_freedsod_empatica.axhline(0, ls='--', color='red')
+sns.regplot(y = empatica_sleeping_reg_plot, x=list(range(0, len(empatica_sleeping_reg_plot.index))), ax=axes_sleeping_freedsod_empatica)
+axes_sleeping_freedsod_empatica.set(ylabel='Empatica - Error Heart rate(bmp)', xlabel='Records')
+axes_sleeping_freedsod_empatica = plt.subplot(3, 1, 2)
+axes_sleeping_freedsod_empatica.plot(devices_df_interval_sleeping_freedson.index.time, devices_df_interval_sleeping_freedson['PA_lvl_VectorA_empatica_encoded'])
+axes_sleeping_freedsod_empatica.set(ylabel='Physical Activity Level', xlabel='Time')
+axes_sleeping_freedsod_empatica = plt.subplot(3, 1, 3)
+axes_sleeping_freedsod_empatica.plot(devices_df_interval_sleeping_freedson.index.time, (devices_df_interval_sleeping_freedson['VectorA_empatica']))
+axes_sleeping_freedsod_empatica.set(ylabel='Accelerometer', xlabel='Time')
+fig.savefig(path_img + subject_folder + '_empatica_sleeping_states')
+
+# Activity States
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - Empatica Error with Freedson(PA level) in Activity states', fontsize=40)
+empatica_activity_reg_plot = (devices_df_interval_activity_freedson['HR_polarh10']-devices_df_interval_activity_freedson['HR_empatica']).where(devices_df_interval_activity_freedson['HR_polarh10']-devices_df_interval_activity_freedson['HR_empatica'] < 50, np.nan)
+axes_activity_freedsod_empatica = plt.subplot(3, 1, 1)
+sns.regplot(y = devices_df_interval_activity_freedson['HR_polarh10']-devices_df_interval_activity_freedson['HR_empatica'], x=list(range(0, len(devices_df_interval_activity_freedson.index))), ax=axes_activity_freedsod_empatica)
+axes_activity_freedsod_empatica.axhline(0, ls='--', color='red')
+axes_activity_freedsod_empatica.set(ylabel='Empatica - Error Heart rate(bmp)', xlabel='Records')
+axes_activity_freedsod_empatica = plt.subplot(3, 1, 2)
+axes_activity_freedsod_empatica.plot(devices_df_interval_activity_freedson.index.time, devices_df_interval_activity_freedson['PA_lvl_VectorA_empatica_encoded'])
+axes_activity_freedsod_empatica.set(ylabel='Physical Activity Level', xlabel='Time')
+axes_activity_freedsod_empatica = plt.subplot(3, 1, 3)
+axes_activity_freedsod_empatica.plot(devices_df_interval_activity_freedson.index.time, (devices_df_interval_activity_freedson['VectorA_empatica']))
+axes_activity_freedsod_empatica.set(ylabel='Accelerometer', xlabel='Time')
+fig.savefig(path_img + subject_folder + '_empatica_activity_states')
+
+# 2.Fitbit
+# Resting states
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - Fitbit Error with Freedson(PA level) in Resting states', fontsize=40)
+axes_resting_freedsod_fitbit = plt.subplot(3, 1, 1)
+fitbit_resting_reg_plot = (devices_df_interval_resting_freedson['HR_biosignalsplux']-devices_df_interval_resting_freedson['HR_fitbit']).where(devices_df_interval_resting_freedson['HR_biosignalsplux']-devices_df_interval_resting_freedson['HR_fitbit'] < 50, np.nan)
+try:
+    sns.regplot(y = fitbit_resting_reg_plot, x=list(range(0, len(fitbit_resting_reg_plot.index))), ax=axes_resting_freedsod_fitbit)
+    axes_resting_freedsod_fitbit.axhline(0, ls='--', color='red')
+    axes_resting_freedsod_fitbit.set(ylabel='Fitbit - Error Heart rate(bmp)', xlabel='Records')
+    axes_resting_freedsod_fitbit = plt.subplot(3, 1, 2)
+    axes_resting_freedsod_fitbit.plot(devices_df_interval_resting_freedson.index.time, devices_df_interval_resting_freedson['PA_lvl_VectorA_empatica_encoded'])
+    axes_resting_freedsod_fitbit.set(ylabel='Physical Activity Level', xlabel='Time')
+    axes_resting_freedsod_fitbit = plt.subplot(3, 1, 3)
+    axes_resting_freedsod_fitbit.plot(devices_df_interval_resting_freedson.index.time, (devices_df_interval_resting_freedson['VectorA_empatica']))
+    axes_resting_freedsod_fitbit.set(ylabel='Accelerometer', xlabel='Time')
+
+except ValueError:
+    print('No data matching found on ' + subject_folder + ' - Fitbit Error with Freedson(PA level) in Resting states')
+fig.savefig(path_img + subject_folder + '_fitbit_resting_states')
+
+# Sleeping States
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - Fitbit Error with Freedson(PA level) in Sleeping states', fontsize=40)
+fitbit_sleeping_reg_plot = (devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_fitbit']).where(devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_fitbit'] < 50, np.nan)
+axes_sleeping_freedsod_fitbit = plt.subplot(3, 1, 1)
+sns.regplot(y = fitbit_sleeping_reg_plot, x=list(range(0, len(fitbit_sleeping_reg_plot.index))), ax=axes_sleeping_freedsod_fitbit)
+axes_sleeping_freedsod_fitbit.axhline(0, ls='--', color='red')
+axes_sleeping_freedsod_fitbit.set(ylabel='Fitbit - Error Heart rate(bmp)', xlabel='Records')
+axes_sleeping_freedsod_fitbit = plt.subplot(3, 1, 2)
+axes_sleeping_freedsod_fitbit.plot(devices_df_interval_sleeping_freedson.index.time, devices_df_interval_sleeping_freedson['PA_lvl_VectorA_empatica_encoded'])
+axes_sleeping_freedsod_fitbit.set(ylabel='Physical Activity Level', xlabel='Time')
+axes_sleeping_freedsod_fitbit = plt.subplot(3, 1, 3)
+axes_sleeping_freedsod_fitbit.plot(devices_df_interval_sleeping_freedson.index.time, (devices_df_interval_sleeping_freedson['VectorA_empatica']))
+axes_sleeping_freedsod_fitbit.set(ylabel='Accelerometer', xlabel='Time')
+fig.savefig(path_img + subject_folder + '_fitbit_sleeping_states')
+
+
+# Activity States
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - Fitbit Error with Freedson(PA level) in Activity states', fontsize=40)
+fitbit_activity_reg_plot = (devices_df_interval_activity_freedson['HR_polarh10']-devices_df_interval_activity_freedson['HR_fitbit']).where(devices_df_interval_activity_freedson['HR_polarh10']-devices_df_interval_activity_freedson['HR_fitbit'] < 50, np.nan)
+axes_activity_freedsod_fitbit = plt.subplot(3, 1, 1)
+sns.regplot(y = fitbit_activity_reg_plot, x=list(range(0, len(fitbit_activity_reg_plot.index))), ax=axes_activity_freedsod_fitbit)
+axes_activity_freedsod_fitbit.axhline(0, ls='--', color='red')
+axes_activity_freedsod_fitbit.set(ylabel='Fitbit - Error Heart rate(bmp)', xlabel='Records')
+axes_activity_freedsod_fitbit = plt.subplot(3, 1, 2)
+axes_activity_freedsod_fitbit.plot(devices_df_interval_activity_freedson.index.time, devices_df_interval_activity_freedson['PA_lvl_VectorA_empatica_encoded'])
+axes_activity_freedsod_fitbit.set(ylabel='Physical Activity Level', xlabel='Time')
+axes_activity_freedsod_fitbit = plt.subplot(3, 1, 3)
+axes_activity_freedsod_fitbit.plot(devices_df_interval_activity_freedson.index.time, (devices_df_interval_activity_freedson['VectorA_empatica']))
+axes_activity_freedsod_fitbit.set(ylabel='Accelerometer', xlabel='Time')
+
+fig.savefig(path_img + subject_folder + '_fitbit_activity_states')
+
+# 3.EmfitQS
+# Sleeping States
+fig = plt.figure()
+my_dpi = 96
+fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
+plt.subplots_adjust(top=0.905,
+bottom=0.06,
+left=0.08,
+right=0.955,
+hspace=0.225,
+wspace=0.155)
+fig.suptitle(subject_folder + ' - EmfitQS Error with Freedson(PA level) in Sleeping states', fontsize=40)
+emfitqs_activity_reg_plot = (devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_emfitqs']).where(devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_emfitqs'] < 50, np.nan)
+axes_sleeping_freedsod_emfitqs = plt.subplot(3, 1, 1)
+sns.regplot(y = emfitqs_activity_reg_plot, x=list(range(0, len(emfitqs_activity_reg_plot.index))), ax=axes_sleeping_freedsod_emfitqs)
+axes_sleeping_freedsod_emfitqs.axhline(0, ls='--', color='red')
+axes_sleeping_freedsod_emfitqs.set(ylabel='EmfitQS - Error Heart rate(bmp)', xlabel='Records')
+axes_sleeping_freedsod_emfitqs = plt.subplot(3, 1, 2)
+axes_sleeping_freedsod_emfitqs.plot(devices_df_interval_sleeping_freedson.index.time, devices_df_interval_sleeping_freedson['PA_lvl_VectorA_empatica_encoded'])
+axes_sleeping_freedsod_emfitqs.set(ylabel='Physical Activity Level', xlabel='Time')
+axes_sleeping_freedsod_emfitqs = plt.subplot(3, 1, 3)
+axes_sleeping_freedsod_emfitqs.plot(devices_df_interval_sleeping_freedson.index.time, (devices_df_interval_sleeping_freedson['VectorA_empatica']))
+axes_sleeping_freedsod_emfitqs.set(ylabel='Accelerometer', xlabel='Time')
+
+fig.savefig(path_img + subject_folder + '_emfitqs_sleeping_states')
+
+
+
+plt.plot((devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_empatica']).dropna(), 'x-', markersize=1.5)
+plt.plot((devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_fitbit']).dropna(), 'x-', markersize=1.5)
+plt.plot((devices_df_interval_sleeping_freedson['HR_biosignalsplux']-devices_df_interval_sleeping_freedson['HR_emfitqs']).dropna(), 'x-', markersize=1.5)
+
+plt.plot((devices_df_interval_sleeping_freedson['PA_lvl_VectorA_empatica_encoded']))
+plt.plot((devices_df_interval_sleeping_freedson['VectorA_empatica']))
+
+'PA_lvl_VectorA_empatica_encoded', 'VectorA_empatica'
+
+plt.plot(devices_df_interval_sleeping['HR_biosignalsplux']-devices_df_interval_sleeping['HR_fitbit'], 'o-')
+plt.plot(devices_df_interval_resting['HR_biosignalsplux']-devices_df_interval_resting['HR_fitbit'], 'o-')
+
