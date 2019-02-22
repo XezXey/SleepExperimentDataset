@@ -22,69 +22,22 @@ from scipy import stats
 import errno
 
 
-subject_folder = sys.argv[1]
-#subject_folder = "Subject06"
+#subject_folder = sys.argv[1]
+subject_folder = "Subject09"
 
-if len(sys.argv) == 1:
-    sys.exit("No subject input")
+#if len(sys.argv) == 1:
+#    sys.exit("No subject input")
 
-print("Data from : " + subject_folder)
-path = './' + subject_folder + '*/All_Device_Preprocess/*.csv'
-
+print("Visualizing One By One, Data from : " + subject_folder)
+path = './' + subject_folder + '*/All_Device_Grouped/*.csv'
 
 devices_filename = glob.glob(path)
-
-# Removing raw filename for ignore in from visualising
-raw_filename = glob.glob('./' + subject_folder + '*/All_Device_Preprocess/*_raw.csv')
-biosppy_filename = glob.glob('./' + subject_folder + '*/All_Device_Preprocess/*_biosppy.csv')
-try:
-    devices_filename.remove(raw_filename[0])
-    devices_filename.remove(biosppy_filename[0])
-    devices_filename.remove(biosppy_filename[1])
-except IndexError or ValueError:
-    print('Everything is fine. Nothing to be remove')
-    
-#print(devices_filename)
-"""
-if len(devices_filename) == 6:
-    devices_list = ['applewatch', 'fitbit', 'emfitqs', 'empatica', 'polarh10', 'ticwatch']
-else : devices_list = ['applewatch', 'fitbit', 'emfitqs', 'empatica', 'polarh10']
-"""
-
-def find_filename(filename):
-    if 'applewatch' in filename:
-        return 'applewatch'
-    elif 'fitbit' in filename:
-        return 'fitbit'
-    elif 'emfitqs' in filename:
-        return 'emfitqs'
-    elif 'ticwatch' in filename:
-        return 'ticwatch'
-    elif 'polarh10' in filename:
-        return 'polarh10'
-    elif 'empatica' in filename:
-        return 'empatica'
-    elif 'biosignalsplux' in filename:
-        return 'biosignalsplux'
-
-
-devices_dict_df = {}
-devices_list_df = []
-for index, filename in enumerate(devices_filename):
-    #print(index)
-    #print(filename)
-    if find_filename(filename) == 'biosignalsplux':
-        devices_list_df.append(pd.read_csv(filename, index_col=None))
-        devices_dict_df[find_filename(filename)] = pd.read_csv(filename, index_col=None)
-    else:
-        devices_list_df.append(pd.read_csv(filename, index_col=0))
-        devices_dict_df[find_filename(filename)] = pd.read_csv(filename, index_col=0)
-"""
-for each_device in devices_dict_df.keys():￼
-    print(devices_dict_df[each_device].head(3))
-    print(devices_dict_df[each_device].info())
-"""
-devices_df = pd.concat(devices_list_df, ignore_index=True, sort=True) # sort = True : For retaining the current behavior and silence the warning, pass 'sort=True'.
+for each_fn in devices_filename:
+    if 'grouped_all_states' in each_fn:
+        grouped_all_devices_fn = each_fn
+        #print(each_fn)
+        break
+devices_df = pd.read_csv(grouped_all_devices_fn)
 
 # Take millisecond part out and parse to datetime object
 devices_df['Timestamp'] = devices_df['Timestamp'].apply(lambda each_time : dt.datetime.strptime(each_time.split('.')[0], '%Y-%m-%d %H:%M:%S').replace(microsecond=0))
@@ -119,9 +72,11 @@ end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
 
 
 # For analyze
-devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting) & (devices_df['Timestamp'] < end_time_resting)]
-devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping) & (devices_df['Timestamp'] < end_time_sleeping)]
-devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity) & (devices_df['Timestamp'] < end_time_activity)]
+devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting.time()) & (devices_df['Timestamp'] < end_time_resting.time())]
+devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping.time()) & (devices_df['Timestamp'] < end_time_sleeping.time())]
+real_end_of_sleeping_index = devices_df_interval_sleeping['AX_empatica'].dropna().index[-1]
+devices_df_interval_sleeping = devices_df_interval_sleeping.loc[devices_df_interval_sleeping.index < real_end_of_sleeping_index]
+devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity.time()) & (devices_df['Timestamp'] < end_time_activity.time())]
 
 # Calculate Correlation Matrix compare with biosignalsplux
 # Loop over each state using 5 minutes windows gap.
@@ -175,7 +130,7 @@ for window in range(0, n_windows_resting):
             corr_resting['rmse_' + each_compare].append(math.sqrt(mean_squared_error(y_true=resting_cmp_df['HR_biosignalsplux'], y_pred=resting_cmp_df[each_compare])))
             corr_resting['mae_' + each_compare].append(mean_absolute_error(y_true=resting_cmp_df['HR_biosignalsplux'], y_pred=resting_cmp_df[each_compare]))
         except ValueError : 
-            print("No matching data at a time")
+            print("(Resting)No matching data to compute MSE, RMSE and MAE")
             corr_resting['mse_' + each_compare].append(np.nan)
             corr_resting['rmse_' + each_compare].append(np.nan)
             corr_resting['mae_' + each_compare].append(np.nan)
@@ -230,7 +185,7 @@ for window in range(0, n_windows_sleeping):
             corr_sleeping['rmse_' + each_compare].append(math.sqrt(mean_squared_error(y_true=sleeping_cmp_df['HR_biosignalsplux'], y_pred=sleeping_cmp_df[each_compare])))
             corr_sleeping['mae_' + each_compare].append(mean_absolute_error(y_true=sleeping_cmp_df['HR_biosignalsplux'], y_pred=sleeping_cmp_df[each_compare]))
         except ValueError : 
-            print("No matching data at a time")
+            print("(Sleeping)No matching data to compute MSE, RMSE and MAE")
             corr_sleeping['mse_' + each_compare].append(np.nan)
             corr_sleeping['rmse_' + each_compare].append(np.nan)
             corr_sleeping['mae_' + each_compare].append(np.nan)
@@ -290,7 +245,7 @@ for window in range(0, n_windows_activity):
             corr_activity['mae_' + each_compare].append(mean_absolute_error(y_true=activity_cmp_df['HR_polarh10'], y_pred=activity_cmp_df[each_compare]))
 
         except ValueError : 
-            print("No matching data at a time")
+            print("(Activity)No matching data to compute MSE, RMSE and MAE")
             corr_activity['mse_' + each_compare].append(np.nan)
             corr_activity['rmse_' + each_compare].append(np.nan)
             corr_activity['mae_' + each_compare].append(np.nan)
@@ -571,16 +526,3 @@ axes_corr_all_acc_sj_groupby_window.errorbar(corr_all_states_df.index, corr_all_
 axes_corr_all_acc_sj_groupby_window.set(ylabel='Empatica - Heart rate(bmp)', xlabel='windows')
 
 fig.savefig(path_img + subject_folder + '_corr_errhr_with_acc_by_windows')
-# 4. Freedson with 
-"""
-x = devices_df_interval_resting.loc[(devices_df_interval_resting['Timestamp'] > start_time_resting.time()) & (devices_df_interval_resting['Timestamp'] < (start_time_resting + windows_gap).time())]
-plt.plot(x['PA_lvl_empatica_encoded'])
-
-windows_gap = dt.timedelta(minutes=90)
-x = devices_df_interval_sleeping.loc[(devices_df_interval_sleeping['Timestamp'] > start_time_sleeping.time()) & (devices_df_interval_sleeping['Timestamp'] < (start_time_sleeping + windows_gap).time())]
-plt.plot(x['PA_lvl_empatica_encoded'])
-
-windows_gap = dt.timedelta(minutes=90)
-x = devices_df_interval_activity.loc[(devices_df_interval_activity['Timestamp'] > start_time_activity.time()) & (devices_df_interval_activity['Timestamp'] < (start_time_activity + windows_gap).time())]
-plt.plot(x['PA_lvl_empatica_encoded'])
-"""
