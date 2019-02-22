@@ -22,13 +22,13 @@ from scipy import stats
 import errno
 
 
-#subject_folder = sys.argv[1]
-subject_folder = "Subject09"
+subject_folder = sys.argv[1]
+#subject_folder = "Subject09"
 
-#if len(sys.argv) == 1:
-#    sys.exit("No subject input")
+if len(sys.argv) == 1:
+    sys.exit("No subject input")
 
-print("Visualizing One By One, Data from : " + subject_folder)
+print("Visualizing PA Correlation each subject, Data from : " + subject_folder)
 path = './' + subject_folder + '*/All_Device_Grouped/*.csv'
 
 devices_filename = glob.glob(path)
@@ -47,9 +47,8 @@ cols = cols[-1:] + cols[:-1]
 devices_df = devices_df[cols]
 devices_df = devices_df.loc[:, ['HR_applewatch', 'HR_polarh10', 'HR_empatica', 'HR_IBI_empatica', 'HR_fitbit', 'HR_emfitqs', 'HR_ticwatch', 'AX_empatica', 'AY_empatica', 'AZ_empatica', 'HR_biosignalsplux', 'PA_lvl_VectorA_empatica_encoded', 'VectorA_empatica']].groupby(devices_df['Timestamp']).mean()
 devices_df['PA_lvl_VectorA_empatica_encoded'] = np.ceil(devices_df['PA_lvl_VectorA_empatica_encoded'])
-
-devices_df['Timestamp'] = devices_df.index
 devices_df['PA_lvl_VectorA_empatica'] = devices_df['PA_lvl_VectorA_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
+devices_df['Timestamp'] = devices_df.index
 
 #devices_df['PA_lvl_empatica'] = devices_df['PA_lvl_empatica_encoded'].map({1:'Sedentary', 2:'Light', 3:'Moderate', 4:'Vigorous', 5:'Very Vigorous'})
 
@@ -70,13 +69,13 @@ end_time_sleeping = devices_df['AX_empatica'].dropna().index[-1]
 start_time_activity = devices_df['HR_polarh10'].dropna().index[0]
 end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
 
-
 # For analyze
-devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting.time()) & (devices_df['Timestamp'] < end_time_resting.time())]
-devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping.time()) & (devices_df['Timestamp'] < end_time_sleeping.time())]
+devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting) & (devices_df['Timestamp'] < end_time_resting)]
+devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping) & (devices_df['Timestamp'] < end_time_sleeping)]
 real_end_of_sleeping_index = devices_df_interval_sleeping['AX_empatica'].dropna().index[-1]
 devices_df_interval_sleeping = devices_df_interval_sleeping.loc[devices_df_interval_sleeping.index < real_end_of_sleeping_index]
-devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity.time()) & (devices_df['Timestamp'] < end_time_activity.time())]
+devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity) & (devices_df['Timestamp'] < end_time_activity)]
+
 
 # Calculate Correlation Matrix compare with biosignalsplux
 # Loop over each state using 5 minutes windows gap.
@@ -130,7 +129,7 @@ for window in range(0, n_windows_resting):
             corr_resting['rmse_' + each_compare].append(math.sqrt(mean_squared_error(y_true=resting_cmp_df['HR_biosignalsplux'], y_pred=resting_cmp_df[each_compare])))
             corr_resting['mae_' + each_compare].append(mean_absolute_error(y_true=resting_cmp_df['HR_biosignalsplux'], y_pred=resting_cmp_df[each_compare]))
         except ValueError : 
-            print("(Resting)No matching data to compute MSE, RMSE and MAE")
+            print("--->(Resting)No matching data to compute MSE, RMSE and MAE")
             corr_resting['mse_' + each_compare].append(np.nan)
             corr_resting['rmse_' + each_compare].append(np.nan)
             corr_resting['mae_' + each_compare].append(np.nan)
@@ -185,7 +184,7 @@ for window in range(0, n_windows_sleeping):
             corr_sleeping['rmse_' + each_compare].append(math.sqrt(mean_squared_error(y_true=sleeping_cmp_df['HR_biosignalsplux'], y_pred=sleeping_cmp_df[each_compare])))
             corr_sleeping['mae_' + each_compare].append(mean_absolute_error(y_true=sleeping_cmp_df['HR_biosignalsplux'], y_pred=sleeping_cmp_df[each_compare]))
         except ValueError : 
-            print("(Sleeping)No matching data to compute MSE, RMSE and MAE")
+            print("--->(Sleeping)No matching data to compute MSE, RMSE and MAE")
             corr_sleeping['mse_' + each_compare].append(np.nan)
             corr_sleeping['rmse_' + each_compare].append(np.nan)
             corr_sleeping['mae_' + each_compare].append(np.nan)
@@ -245,7 +244,7 @@ for window in range(0, n_windows_activity):
             corr_activity['mae_' + each_compare].append(mean_absolute_error(y_true=activity_cmp_df['HR_polarh10'], y_pred=activity_cmp_df[each_compare]))
 
         except ValueError : 
-            print("(Activity)No matching data to compute MSE, RMSE and MAE")
+            print("--->(Activity)No matching data to compute MSE, RMSE and MAE")
             corr_activity['mse_' + each_compare].append(np.nan)
             corr_activity['rmse_' + each_compare].append(np.nan)
             corr_activity['mae_' + each_compare].append(np.nan)
@@ -307,31 +306,34 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + ' - Device Correlation Coefficient with Biosignalsplux', fontsize=40)
+fig.suptitle(subject_folder + '-Device Correlation Coefficient with Standard(By states)', fontsize=40)
 axes_devices_corr = plt.subplot(2, 2, 1)
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_HR_fitbit'].mean(), corr_sleeping_df['corr_HR_fitbit'].mean(), corr_activity_df['corr_HR_fitbit'].mean()], 
               yerr=[np.std(corr_resting_df['corr_HR_fitbit']), np.std(corr_sleeping_df['corr_HR_fitbit']), np.std(corr_activity_df['corr_HR_fitbit'])], 
               fmt='x', elinewidth=2.5, markersize=10)
+axes_devices_corr.set(ylim=(-1, 1))
 axes_devices_corr.set(ylabel='Fitbit Correlation Coefficient with Biosignalsplux', xlabel='States')
-
 
 axes_devices_corr = plt.subplot(2, 2, 2)
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_HR_empatica'].mean(), corr_sleeping_df['corr_HR_empatica'].mean(), corr_activity_df['corr_HR_empatica'].mean()], 
               yerr=[np.std(corr_resting_df['corr_HR_empatica']), np.std(corr_sleeping_df['corr_HR_empatica']), np.std(corr_activity_df['corr_HR_empatica'])], 
               fmt='o', elinewidth=2.5, markersize=10)
+axes_devices_corr.set(ylim=(-1, 1))
 axes_devices_corr.set(ylabel='Empatica Correlation Coefficient with Biosignalsplux', xlabel='States')
 
 axes_devices_corr = plt.subplot(2, 2, 3)
 axes_devices_corr.plot(corr_sleeping_df['n_window'], corr_sleeping_df['corr_HR_emfitqs'], '*')
+axes_devices_corr.set(ylim=(-1, 1))
 axes_devices_corr.set(ylabel='EmfitQS - Correlation Coefficient with Biosignalsplux', xlabel='n_windows')
 
 axes_devices_corr = plt.subplot(2, 2, 4)
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_HR_fitbit'].mean(), corr_sleeping_df['corr_HR_fitbit'].mean(), corr_activity_df['corr_HR_fitbit'].mean()], 
               yerr=[np.std(corr_resting_df['corr_HR_fitbit']), np.std(corr_sleeping_df['corr_HR_fitbit']), np.std(corr_activity_df['corr_HR_fitbit'])], 
-              fmt='x', elinewidth=2.5, markersize=10)
+              fmt='x', elinewidth=2.5, markersize=10, label='Fitbit')
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_HR_empatica'].mean(), corr_sleeping_df['corr_HR_empatica'].mean(), corr_activity_df['corr_HR_empatica'].mean()], 
               yerr=[np.std(corr_resting_df['corr_HR_empatica']), np.std(corr_sleeping_df['corr_HR_empatica']), np.std(corr_activity_df['corr_HR_empatica'])], 
-              fmt='o', elinewidth=2.5, markersize=10)
+              fmt='o', elinewidth=2.5, markersize=10, label='Empatica')
+axes_devices_corr.set(ylim=(-1, 1))
 axes_devices_corr.set(ylabel='All Devices Correlation Coefficient with Biosignalsplux', xlabel='States')
 plt.legend()
 fig.savefig(path_img + subject_folder + '_corr_with_standard', quality=95)
@@ -347,12 +349,12 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + " - Heart rate and error compare with standard(by windows)", fontsize=40)
+fig.suptitle(subject_folder + "-Heart rate&Errorbar compare with standard(by windows)", fontsize=40)
 axes_corr_all_sj_groupby_window = plt.subplot(2, 2, 1)
 axes_corr_all_sj_groupby_window.axvline(x = 5.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(5, 100, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(5, 120, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.axvline(x = len(corr_resting_df) + len(corr_sleeping_df) + 0.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(len(corr_resting_df) + len(corr_sleeping_df), 100, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(len(corr_resting_df) + len(corr_sleeping_df), 120, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.errorbar(corr_all_states_df.index, corr_all_states_df['mean_HR_fitbit'], yerr=corr_all_states_df['mae_HR_fitbit'], fmt = 'x')
 axes_corr_all_sj_groupby_window.set(ylabel='Fitbit - Heart rate(bmp)', xlabel='windows')
 
@@ -362,13 +364,13 @@ axes_corr_all_sj_groupby_window.set(ylabel='Emfitqs - Heart rate(bmp)', xlabel='
 
 axes_corr_all_sj_groupby_window = plt.subplot(2, 2, 3)
 axes_corr_all_sj_groupby_window.axvline(x = 5.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(5, 100, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(5, 120, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.axvline(x = len(corr_resting_df) + len(corr_sleeping_df) + 0.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(len(corr_resting_df) + len(corr_sleeping_df), 100, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(len(corr_resting_df) + len(corr_sleeping_df), 120, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.errorbar(corr_all_states_df.index, corr_all_states_df['mean_HR_empatica'], yerr=corr_all_states_df['mae_HR_empatica'], fmt = 'x')
 axes_corr_all_sj_groupby_window.set(ylabel='Empatica - Heart rate(bmp)', xlabel='windows')
 
-fig.savefig(path_img + subject_folder + '_hr_stderror_with_standard')
+fig.savefig(path_img + subject_folder + '_hr_and_errorbar_with_standard')
 
 # 2. Mean Standard Error using absolute error
 # Resting state
@@ -381,7 +383,7 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + ' - Resting state(Standard Error)', fontsize=40)
+fig.suptitle(subject_folder + '-Resting state(Standard Error)', fontsize=40)
 axes_stderr_resting = plt.subplot(2, 2, 1)
 axes_stderr_resting.errorbar(corr_resting_df['n_window'], corr_resting_df['mean_HR_fitbit'], yerr=corr_resting_df['mae_HR_fitbit'], fmt='o', elinewidth=2.5, markersize=10)
 axes_stderr_resting.set(ylabel='Fitbit - Heart rate(bpm)', xlabel='n_windows')
@@ -407,7 +409,7 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + ' - Sleeping state(Standard Error)', fontsize=40)
+fig.suptitle(subject_folder + '-Sleeping state(Standard Error)', fontsize=40)
 axes_stderr_sleeping = plt.subplot(2, 2, 1)
 axes_stderr_sleeping.errorbar(corr_sleeping_df['n_window'], corr_sleeping_df['mean_HR_fitbit'], yerr=corr_sleeping_df['mae_HR_fitbit'], fmt='o', elinewidth=2.5, markersize=10)
 axes_stderr_sleeping.set(ylabel='Fitbit - Heart rate(bpm)', xlabel='n_windows')
@@ -439,7 +441,7 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + ' - Activity state(Standard Error)', fontsize=40)
+fig.suptitle(subject_folder + '-Activity state(Standard Error)', fontsize=40)
 axes_stderr_activity = plt.subplot(2, 2, 1)
 axes_stderr_activity.errorbar(corr_activity_df['n_window'], corr_activity_df['mean_HR_fitbit'], yerr=corr_activity_df['mae_HR_fitbit'], fmt='o', elinewidth=2.5, markersize=10)
 axes_stderr_activity.set(ylabel='Fitbit - Heart rate(bpm)', xlabel='n_windows')
@@ -466,33 +468,38 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + ' - Devices Correlation Coefficient with Accelerometer(By states)', fontsize=40)
+fig.suptitle(subject_folder + '-Devices(MAE) Correlation Coefficient with Accelerometer(By states)', fontsize=40)
 axes_devices_corr = plt.subplot(2, 2, 1)
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_VectorA_HR_fitbit'].mean(), corr_sleeping_df['corr_VectorA_HR_fitbit'].mean(), corr_activity_df['corr_VectorA_HR_fitbit'].mean()], 
               yerr=[np.std(corr_resting_df['corr_VectorA_HR_fitbit']), np.std(corr_sleeping_df['corr_VectorA_HR_fitbit']), np.std(corr_activity_df['corr_VectorA_HR_fitbit'])], 
               fmt='x', elinewidth=2.5, markersize=10)
+axes_devices_corr.set(ylim=(-1, 1))
 axes_devices_corr.set(ylabel='Fitbit Correlation Coefficient with Accelerometer', xlabel='States')
 
 axes_devices_corr = plt.subplot(2, 2, 2)
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_VectorA_HR_empatica'].mean(), corr_sleeping_df['corr_VectorA_HR_empatica'].mean(), corr_activity_df['corr_VectorA_HR_empatica'].mean()], 
               yerr=[np.std(corr_resting_df['corr_HR_empatica']), np.std(corr_sleeping_df['corr_VectorA_HR_empatica']), np.std(corr_activity_df['corr_VectorA_HR_empatica'])], 
               fmt='o', elinewidth=2.5, markersize=10)
+axes_devices_corr.set(ylim=(-1, 1))
 axes_devices_corr.set(ylabel='Empatica Correlation Coefficient with Accelerometer', xlabel='States')
 
 axes_devices_corr = plt.subplot(2, 2, 3)
 axes_devices_corr.plot(corr_sleeping_df['n_window'], corr_sleeping_df['corr_VectorA_HR_emfitqs'], '*')
 axes_devices_corr.set(ylabel='EmfitQS - Correlation Coefficient with Accelerometer', xlabel='n_windows')
+axes_devices_corr.set(ylim=(-1, 1))
 
 axes_devices_corr = plt.subplot(2, 2, 4)
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_VectorA_HR_fitbit'].mean(), corr_sleeping_df['corr_VectorA_HR_fitbit'].mean(), corr_activity_df['corr_VectorA_HR_fitbit'].mean()], 
               yerr=[np.std(corr_resting_df['corr_VectorA_HR_fitbit']), np.std(corr_sleeping_df['corr_VectorA_HR_fitbit']), np.std(corr_activity_df['corr_VectorA_HR_fitbit'])], 
-              fmt='x', elinewidth=2.5, markersize=10)
+              fmt='x', elinewidth=2.5, markersize=10, label='Corr_Fitbit_VectorA')
 axes_devices_corr.errorbar(['Resting', 'Sleeping', 'Activity'], [corr_resting_df['corr_VectorA_HR_empatica'].mean(), corr_sleeping_df['corr_VectorA_HR_empatica'].mean(), corr_activity_df['corr_VectorA_HR_empatica'].mean()], 
               yerr=[np.std(corr_resting_df['corr_HR_empatica']), np.std(corr_sleeping_df['corr_VectorA_HR_empatica']), np.std(corr_activity_df['corr_VectorA_HR_empatica'])], 
-              fmt='o', elinewidth=2.5, markersize=10)
+              fmt='o', elinewidth=2.5, markersize=10, label='Corr_Empatica_VectorA')
 axes_devices_corr.set(ylabel='All Devices Correlation Coefficient with Accelerometer', xlabel='States')
+axes_devices_corr.set(ylim=(-1, 1))
+
 plt.legend()
-fig.savefig(path_img + subject_folder + '_corr_errhr_with_acc_by_states')
+fig.savefig(path_img + subject_folder + '_corr_errhr_with_vectora_by_states')
 
 # 3.2 By windows
 fig = plt.figure()
@@ -504,18 +511,21 @@ left=0.08,
 right=0.955,
 hspace=0.225,
 wspace=0.155)
-fig.suptitle(subject_folder + " - Heart rate and error compare with Accelerometer(By windows)", fontsize=40)
+fig.suptitle(subject_folder + "-Heart rate(MAE) Correlation Coefficient with Accelerometer(By windows)", fontsize=40)
 axes_corr_all_acc_sj_groupby_window = plt.subplot(2, 2, 1)
 axes_corr_all_acc_sj_groupby_window.axvline(x = 5.5, color='r', linestyle='--')
 axes_corr_all_acc_sj_groupby_window.text(5, 0.2, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
 axes_corr_all_acc_sj_groupby_window.axvline(x = len(corr_resting_df) + len(corr_sleeping_df) + 0.5, color='r', linestyle='--')
 axes_corr_all_acc_sj_groupby_window.text(len(corr_resting_df) + len(corr_sleeping_df), 0.2, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
 axes_corr_all_acc_sj_groupby_window.errorbar(corr_all_states_df.index, corr_all_states_df['corr_VectorA_HR_fitbit'], fmt = 'x')
+axes_corr_all_acc_sj_groupby_window.set(ylim=(-1, 1))
 axes_corr_all_acc_sj_groupby_window.set(ylabel='Fitbit - Heart rate(bmp)', xlabel='windows')
 
 axes_corr_all_acc_sj_groupby_window = plt.subplot(2, 2, 2)
 axes_corr_all_acc_sj_groupby_window.errorbar(corr_all_states_df.index, corr_all_states_df['corr_VectorA_HR_emfitqs'], fmt = 'x')
 axes_corr_all_acc_sj_groupby_window.set(ylabel='Emfitqs - Heart rate(bmp)', xlabel='windows')
+axes_corr_all_acc_sj_groupby_window.set(ylim=(-1, 1))
+
 
 axes_corr_all_acc_sj_groupby_window = plt.subplot(2, 2, 3)
 axes_corr_all_acc_sj_groupby_window.axvline(x = 5.5, color='r', linestyle='--')
@@ -524,5 +534,7 @@ axes_corr_all_acc_sj_groupby_window.axvline(x = len(corr_resting_df) + len(corr_
 axes_corr_all_acc_sj_groupby_window.text(len(corr_resting_df) + len(corr_sleeping_df), 0.2, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
 axes_corr_all_acc_sj_groupby_window.errorbar(corr_all_states_df.index, corr_all_states_df['corr_VectorA_HR_empatica'], fmt = 'x')
 axes_corr_all_acc_sj_groupby_window.set(ylabel='Empatica - Heart rate(bmp)', xlabel='windows')
+axes_corr_all_acc_sj_groupby_window.set(ylim=(-1, 1))
+
 
 fig.savefig(path_img + subject_folder + '_corr_errhr_with_acc_by_windows')

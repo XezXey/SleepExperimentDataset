@@ -21,14 +21,12 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from scipy import stats
 import errno
 
-
 initial_flag_resting = 1
 initial_flag_sleeping = 1
 initial_flag_activity = 1
 
 #subject_folder = sys.argv[1]
 subject_list = ['Subject01', 'Subject02', 'Subject03', 'Subject04', 'Subject05', 'Subject06', 'Subject07', 'Subject08', 'Subject09', 'Subject10']
-#subject_folder = "Subject09"
 
 for subject_folder in subject_list:
    
@@ -79,11 +77,11 @@ for subject_folder in subject_list:
     
     
     # For analyze
-    devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting.time()) & (devices_df['Timestamp'] < end_time_resting.time())]
-    devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping.time()) & (devices_df['Timestamp'] < end_time_sleeping.time())]
+    devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting) & (devices_df['Timestamp'] < end_time_resting)]
+    devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping) & (devices_df['Timestamp'] < end_time_sleeping)]
     real_end_of_sleeping_index = devices_df_interval_sleeping['AX_empatica'].dropna().index[-1]
     devices_df_interval_sleeping = devices_df_interval_sleeping.loc[devices_df_interval_sleeping.index < real_end_of_sleeping_index]
-    devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity.time()) & (devices_df['Timestamp'] < end_time_activity.time())]
+    devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity) & (devices_df['Timestamp'] < end_time_activity)]
 
     # Calculate Correlation Matrix compare with biosignalsplux
     # Loop over each state using 5 minutes windows gap.
@@ -349,9 +347,9 @@ wspace=0.155)
 fig.suptitle("All devices & All states - Heart rate and error compare with standard", fontsize=40)
 axes_corr_all_sj_groupby_window = plt.subplot(2, 2, 1)
 axes_corr_all_sj_groupby_window.axvline(x = 5.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(4.5, 140, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(4.5, 110, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.axvline(x = 22.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(21.5, 140, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(21.5, 110, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.errorbar(corr_all_sj_groupby_window.index, corr_all_sj_groupby_window['mean_HR_fitbit'], yerr=corr_all_sj_groupby_window['mae_HR_fitbit'], fmt = 'x')
 axes_corr_all_sj_groupby_window.set(ylabel='Fitbit - Heart rate(bmp)', xlabel='windows')
 
@@ -361,9 +359,9 @@ axes_corr_all_sj_groupby_window.set(ylabel='Emfitqs - Heart rate(bmp)', xlabel='
 
 axes_corr_all_sj_groupby_window = plt.subplot(2, 2, 3)
 axes_corr_all_sj_groupby_window.axvline(x = 5.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(4.5, 140, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(4.5, 110, 'Resting_to_Sleeping', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.axvline(x = 22.5, color='r', linestyle='--')
-axes_corr_all_sj_groupby_window.text(21.5, 140, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
+axes_corr_all_sj_groupby_window.text(21.5, 110, 'Sleeping_to_Activity', rotation=90, verticalalignment='center')
 axes_corr_all_sj_groupby_window.errorbar(corr_all_sj_groupby_window.index, corr_all_sj_groupby_window['mean_HR_empatica'], yerr=corr_all_sj_groupby_window['mae_HR_empatica'], fmt = 'x')
 axes_corr_all_sj_groupby_window.set(ylabel='Empatica - Heart rate(bmp)', xlabel='windows')
 

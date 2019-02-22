@@ -21,8 +21,8 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 subject_folder = sys.argv[1]
 #subject_folder = "Subject02"
 
-#if len(sys.argv) == 1:
-#    sys.exit("No subject input")
+if len(sys.argv) == 1:
+    sys.exit("No subject input")
 
 print("Visualizing Scatter and Line, Data from : " + subject_folder)
 path = './' + subject_folder + '*/All_Device_Grouped/*.csv'
@@ -43,31 +43,27 @@ cols = cols[-1:] + cols[:-1]
 devices_df = devices_df[cols]
 interest_cols = ['HR_applewatch', 'HR_polarh10', 'HR_empatica', 'HR_IBI_empatica', 'HR_fitbit', 'HR_emfitqs', 'HR_ticwatch', 'AX_empatica', 'AY_empatica', 'AZ_empatica', 'PA_lvl_VectorA_empatica_encoded', 'VectorA_empatica', 'HR_biosignalsplux']
 devices_df = devices_df.loc[:, interest_cols].groupby(devices_df['Timestamp']).mean()
-devices_df['Timestamp'] = devices_df.index.time
+devices_df['Timestamp'] = devices_df.index
 
 # Plotting
-# Slicing into the interest interval
-start_time = "13:00:10"
-end_time = "16:38:23"
-start_time_obj = dt.datetime.strptime(start_time, "%H:%M:%S").replace(microsecond=0).time()
-end_time_obj = dt.datetime.strptime(end_time, "%H:%M:%S").replace(microsecond=0).time()
-devices_df_interval = devices_df.loc[(devices_df['Timestamp'] > start_time_obj) & (devices_df['Timestamp'] < end_time_obj)]
 
 # Slicing into the resting and sleeping state
 start_time_resting = devices_df['AX_empatica'].dropna().index[0]
 end_time_resting = start_time_resting + dt.timedelta(minutes=30)
 start_time_sleeping = end_time_resting + dt.timedelta(minutes=5)
-end_time_sleeping = devices_df['AX_empatica'].dropna().index[-1]
 end_time_sleeping = start_time_sleeping + dt.timedelta(minutes=90)
 start_time_activity = devices_df['HR_polarh10'].dropna().index[0]
 end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
 
+# Slicing into the interest interval of all states
+devices_df_interval = devices_df.loc[(devices_df['Timestamp'] > start_time_resting) & (devices_df['Timestamp'] < end_time_activity)]
+
 # For analyze
-devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting.time()) & (devices_df['Timestamp'] < end_time_resting.time())]
-devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping.time()) & (devices_df['Timestamp'] < end_time_sleeping.time())]
+devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting) & (devices_df['Timestamp'] < end_time_resting)]
+devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping) & (devices_df['Timestamp'] < end_time_sleeping)]
 real_end_of_sleeping_index = devices_df_interval_sleeping['AX_empatica'].dropna().index[-1]
 devices_df_interval_sleeping = devices_df_interval_sleeping.loc[devices_df_interval_sleeping.index < real_end_of_sleeping_index]
-devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity.time()) & (devices_df['Timestamp'] < end_time_activity.time())]
+devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity) & (devices_df['Timestamp'] < end_time_activity)]
 
 """
 # Writing to csv file for only grouped 
@@ -130,8 +126,6 @@ wspace=0.155)
 ax1_hr = plt.subplot(2, 1, 1)
 ax2_acc = plt.subplot(2, 1, 2)
 for each_device in devices_df_interval_plot_hr.columns:
-    #print(each_device)
-    #ax1_hr.set_xticklabels(devices_df_interval_plot_hr[each_device].dropna().index.time, rotation=45)
     ax1_hr.plot(devices_df_interval_plot_hr[each_device].dropna().index.time, devices_df_interval_plot_hr[each_device].dropna(), 'x-', markersize=0.8)
     
 ax1_hr.set_title("Heart rate measure by wearable devices")
@@ -170,8 +164,6 @@ for state_name, state_value_list in state_devices.items():
     ax1_hr = plt.subplot(2, 1, 1)
     ax2_acc = plt.subplot(2, 1, 2)
     for each_device in state_devices[state_name]:
-        #print(each_device)
-        #ax1_hr.set_xticklabels(devices_df_interval_plot_hr[each_device].dropna().index.time, rotation=45)
         ax1_hr.plot(state_df_hr[state_name][each_device].dropna().index.time, state_df_hr[state_name][each_device].dropna(), 'x-', markersize=0.8)
         
     fig.suptitle(state_name + ' state', fontsize=50)

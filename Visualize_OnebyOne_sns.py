@@ -20,8 +20,8 @@ import errno
 subject_folder = sys.argv[1]
 #subject_folder = "Subject09"
 
-#if len(sys.argv) == 1:
-#    sys.exit("No subject input")
+if len(sys.argv) == 1:
+    sys.exit("No subject input")
 
 print("Visualizing One By One, Data from : " + subject_folder)
 path = './' + subject_folder + '*/All_Device_Grouped/*.csv'
@@ -40,16 +40,17 @@ cols = devices_df.columns.tolist()
 cols = cols[-1:] + cols[:-1]
 devices_df = devices_df[cols]
 devices_df = devices_df.loc[:, ['HR_applewatch', 'HR_polarh10', 'HR_empatica', 'HR_IBI_empatica', 'HR_fitbit', 'HR_emfitqs', 'HR_ticwatch', 'AX_empatica', 'AY_empatica', 'AZ_empatica', 'HR_biosignalsplux']].groupby(devices_df['Timestamp']).mean()
-devices_df['Timestamp'] = devices_df.index.time
+devices_df['Timestamp'] = devices_df.index
 
 # Plotting
+"""
 # Slicing into the interest interval
 start_time = "13:00:10"
 end_time = "16:38:23"
 start_time_obj = dt.datetime.strptime(start_time, "%H:%M:%S").replace(microsecond=0).time()
 end_time_obj = dt.datetime.strptime(end_time, "%H:%M:%S").replace(microsecond=0).time()
 devices_df_interval = devices_df.loc[(devices_df['Timestamp'] > start_time_obj) & (devices_df['Timestamp'] < end_time_obj)]
-
+"""
 # Slicing into the resting and sleeping state
 start_time_resting = devices_df['AX_empatica'].dropna().index[0]
 end_time_resting = start_time_resting + dt.timedelta(minutes=30)
@@ -60,11 +61,11 @@ start_time_activity = devices_df['HR_polarh10'].dropna().index[0]
 end_time_activity = devices_df['HR_polarh10'].dropna().index[-1]
 
 # For analyze
-devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting.time()) & (devices_df['Timestamp'] < end_time_resting.time())]
-devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping.time()) & (devices_df['Timestamp'] < end_time_sleeping.time())]
+devices_df_interval_resting = devices_df.loc[(devices_df['Timestamp'] > start_time_resting) & (devices_df['Timestamp'] < end_time_resting)]
+devices_df_interval_sleeping = devices_df.loc[(devices_df['Timestamp'] > start_time_sleeping) & (devices_df['Timestamp'] < end_time_sleeping)]
 real_end_of_sleeping_index = devices_df_interval_sleeping['AX_empatica'].dropna().index[-1]
 devices_df_interval_sleeping = devices_df_interval_sleeping.loc[devices_df_interval_sleeping.index < real_end_of_sleeping_index]
-devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity.time()) & (devices_df['Timestamp'] < end_time_activity.time())]
+devices_df_interval_activity = devices_df.loc[(devices_df['Timestamp'] > start_time_activity) & (devices_df['Timestamp'] < end_time_activity)]
 
 
 # Create folder to store image
@@ -78,7 +79,6 @@ if not os.path.exists(os.path.dirname(path_img)):
             raise
 
 # Resting state
-
 fig = plt.figure()
 my_dpi = 96
 fig = plt.figure(figsize=(1920/my_dpi, 1080/my_dpi))
@@ -127,10 +127,7 @@ try:
 except ValueError:
     print("--->(Resting)Empatica records are not matching with biosignalsplux")
 axes_resting.legend()
-
-
 fig.savefig(path_img + subject_folder + '_resting_state', quality=95)
-
 
 # Sleeping state
 fig = plt.figure()
@@ -292,11 +289,3 @@ except ValueError :
 plt.legend()
 
 fig.savefig(path_img + subject_folder + '_activity_state', quality=95)
-
-"""
-r = devices_df_interval_resting.corr(method='pearson')
-
-s = devices_df_interval_sleeping.corr(method='pearson')
-
-a = devices_df_interval_activity.corr(method='pearson')
-"""
